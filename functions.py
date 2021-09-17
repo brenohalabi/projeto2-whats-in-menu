@@ -12,17 +12,44 @@ import plotly.express as px
 # o DF com os joins já feito(ta no notebook)
 df_final = pd.read_csv('./df_final.csv')
 
+
 # filtro do DF da animação
 @st.cache
 def animation_df():
-    top_10_menu = df_final[['name', 'menus_appeared']].sort_values(by='menus_appeared', ascending=False).drop_duplicates(subset=['name'])[0:10]
+    top_10_menu = df_final[['name', 'menus_appeared', 'price']].sort_values(by='menus_appeared', ascending=False).drop_duplicates(subset=['name'])[0:10]
     df_cp = df_final[['price', 'name', 'year']]
     df_cp['times_appeared_by_year'] = 1
-    groupped = df_cp.groupby(['year', 'name']).sum().reset_index()
-    group_sort = groupped.sort_values(by=['times_appeared_by_year'], ascending=False)
-    df_inter = group_sort[group_sort.name.isin(top_10_menu.name)]
-    df_sorted_year = df_inter.sort_values(by=['year'])
-    return df_sorted_year[df_sorted_year['year'] >= 1900]
+    df_cp = df_cp[df_cp.name.isin(top_10_menu.name)]
+
+    itere = df_cp.groupby('year')
+    final_df = pd.DataFrame(columns=df_cp.columns)
+
+    for i in itere:
+        if top_10_menu.name.isin(i[1].name).all() != True:
+            not_in = top_10_menu[~top_10_menu.name.isin(i[1].name)].drop(columns='menus_appeared').copy()
+            year = i[1].year.values[0]
+            not_in['price'] = 0
+            not_in['times_appeared_by_year'] = 0
+            not_in['year'] = year
+            final_df = final_df.append(not_in[df_cp.columns])
+
+    final_df = final_df.append(df_cp)
+    final_df = final_df.append(df_cp)
+    final_df = final_df[(final_df['year'] >= 1900) & (final_df['year'] <= 2000)].reset_index()
+
+    groupped = pd.DataFrame()
+    for i in final_df.groupby(['year', 'name']):
+        media = i[1].price.mean()
+        soma =  i[1].times_appeared_by_year.sum()
+        nome = i[1].name.values[0]
+        year = i[1].year.values[0]
+        data = dict(year=[year],name=[nome],times_appeared_by_year=[soma],media=[media])
+        new_df = pd.DataFrame(data=data)
+        groupped = groupped.append(new_df)
+    groupped = groupped.sort_values(by=['year'])
+    groupped['cumulative_appearing'] = groupped.groupby(['name']).times_appeared_by_year.cumsum()
+
+    return groupped
 
 # filtro dos sponsors
 @st.cache
@@ -56,7 +83,7 @@ def top_sponsors_graph(df):
                 tickfont=dict(
                     family='Roboto',
                     size=12,
-                    color='rgb(82,82,82)'),
+                    color='rgb(235,235,235)'),
             ),
         yaxis=dict(
                 showgrid=False,
@@ -80,7 +107,7 @@ def top_variacao_graph(df):
                 tickfont=dict(
                     family='Roboto',
                     size=12,
-                    color='rgb(82,82,82)'),
+                    color='rgb(235,235,235)'),
             ),
         yaxis=dict(
                 showgrid=False,
@@ -104,7 +131,7 @@ def top_aparicao_graph_menu(df):
                 tickfont=dict(
                     family='Roboto',
                     size=12,
-                    color='rgb(82,82,82)'),
+                    color='rgb(235,235,235)'),
             ),
         yaxis=dict(
                 showgrid=False,
@@ -128,7 +155,7 @@ def top_aparicao_graph_total(df):
                 tickfont=dict(
                     family='Roboto',
                     size=12,
-                    color='rgb(82,82,82)'),
+                    color='rgb(235,235,235)'),
             ),
         yaxis=dict(
                 showgrid=False,
@@ -141,21 +168,27 @@ def top_aparicao_graph_total(df):
 
 # animação
 @st.cache
-def animation_graph(df):
+def animation_graph(df, modo):
+    if modo[0] == 'times_appeared_by_year':
+        range_y=[0,600]
+    else:
+        range_y=[0,7000]
     fig = px.scatter(df, 
-        x='price', 
-        y='times_appeared_by_year',           
+        x='media', 
+        y=modo[0],           
         color='name',
-        size='times_appeared_by_year',
+        size=modo[1],
         size_max=55,
         animation_frame='year',
-        range_y=[1, 400],
+        range_y=range_y,
+        log_x=True,
         labels={
-        'price': 'Preço',
+        'media': 'Preço',
         'times_appeared_by_year': 'Aparições por Ano',
+        'cumulative_appearing': 'Aparições Acumuladas'
         },
-        range_x=[0.1, 350])
-    fig.layout.update(title_text='Preço x Aparições por Ano', xaxis_rangeslider_visible=False,autosize=True)
+        range_x=[0.1, 300])
+    fig.layout.update(title_text='Preço x Aparições por Ano x Aparições Acumuladas', xaxis_rangeslider_visible=False,autosize=True)
     fig.layout.update(
     xaxis=dict(
         showgrid=False,
@@ -164,7 +197,7 @@ def animation_graph(df):
         tickfont=dict(
             family='Roboto',
             size=12,
-            color='rgb(82,82,82)'),
+            color='rgb(235,235,235)'),
     ),
     yaxis=dict(
         showgrid=False,
