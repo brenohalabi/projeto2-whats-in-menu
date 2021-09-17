@@ -11,7 +11,6 @@ import plotly.express as px
 import functions as lp # o arquivo com as funções
 
 
-
 top_sponsors = lp.top_sponsors() # pega o DF filtrado
 graph_sponsors = lp.top_sponsors_graph(top_sponsors) # monta o gŕafico com DF filtrado
 st.plotly_chart(graph_sponsors) # plota o gráfico na tela
@@ -36,6 +35,18 @@ else:
     st.plotly_chart(graph_aparicao_total) # plota o gráfico na tela
 
 
-animation_df = lp.animation_df() # pega o DF filtrado
-animation_graph = lp.animation_graph(animation_df) # monta o gŕafico com DF filtrado
-st.plotly_chart(animation_graph) # plota o gráfico na tela
+appeared_box = st.selectbox(
+    'Qual métrica deseja selecionar:',
+    ('Aparições por Ano', 'Aparições Acumuladas')  # Opções
+) # box com seleção
+if appeared_box == 'Aparições por Ano':
+    modo=['times_appeared_by_year', 'cumulative_appearing']
+    animation_df = lp.animation_df() # pega o DF filtrado
+    animation_graph = lp.animation_graph(animation_df, modo) # monta o gŕafico com DF filtrado
+    st.plotly_chart(animation_graph) # plota o gráfico na tela
+else:
+    modo=['cumulative_appearing', 'times_appeared_by_year']
+    animation_df = lp.animation_df() # pega o DF filtrado
+    animation_graph = lp.animation_graph(animation_df, modo) # monta o gŕafico com DF filtrado
+    st.plotly_chart(animation_graph) # plota o gráfico na tela
+
